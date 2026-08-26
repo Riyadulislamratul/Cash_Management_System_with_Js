@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react";
-import { X } from "lucide-react";
+import {
+  AlertCircle,
+  CalendarDays,
+  CircleDollarSign,
+  FileText,
+  Tag,
+  Wallet,
+  X,
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const defaultForm = {
@@ -20,6 +28,7 @@ const categories = {
     "Gift",
     "Other",
   ],
+
   expense: [
     "Food",
     "Shopping",
@@ -28,6 +37,7 @@ const categories = {
     "Rent",
     "Entertainment",
     "Health",
+    "Education",
     "Other",
   ],
 };
@@ -39,6 +49,9 @@ export default function TransactionModal({
   transaction,
 }) {
   const [form, setForm] = useState(defaultForm);
+  const [errors, setErrors] = useState({});
+
+  const isEditing = Boolean(transaction);
 
   useEffect(() => {
     if (transaction) {
@@ -53,6 +66,8 @@ export default function TransactionModal({
     } else {
       setForm(defaultForm);
     }
+
+    setErrors({});
   }, [transaction, open]);
 
   if (!open) {
@@ -66,6 +81,11 @@ export default function TransactionModal({
       ...current,
       [name]: value,
     }));
+
+    setErrors((current) => ({
+      ...current,
+      [name]: "",
+    }));
   };
 
   const handleTypeChange = (type) => {
@@ -74,24 +94,50 @@ export default function TransactionModal({
       type,
       category: "",
     }));
+
+    setErrors({});
+  };
+
+  const validate = () => {
+    const newErrors = {};
+
+    if (!form.amount) {
+      newErrors.amount = "Amount is required.";
+    } else if (Number(form.amount) <= 0) {
+      newErrors.amount =
+        "Amount must be greater than zero.";
+    }
+
+    if (!form.category) {
+      newErrors.category =
+        "Please select a category.";
+    }
+
+    if (!form.account) {
+      newErrors.account =
+        "Please select an account.";
+    }
+
+    if (!form.date) {
+      newErrors.date = "Please select a date.";
+    }
+
+    setErrors(newErrors);
+
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = (event) => {
     event.preventDefault();
 
-    if (!form.amount || Number(form.amount) <= 0) {
-      alert("Please enter a valid amount.");
+    if (!validate()) {
       return;
     }
 
-    if (!form.category) {
-      alert("Please select a category.");
-      return;
-    }
-
-    onSubmit(form);
-
-    setForm(defaultForm);
+    onSubmit({
+      ...form,
+      amount: Number(form.amount),
+    });
   };
 
   return (
@@ -105,29 +151,46 @@ export default function TransactionModal({
           onMouseDown={onClose}
         >
           <motion.div
-            className="w-full max-w-lg rounded-2xl bg-white shadow-2xl"
-            initial={{ opacity: 0, y: 30, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.96 }}
+            initial={{
+              opacity: 0,
+              y: 30,
+              scale: 0.96,
+            }}
+            animate={{
+              opacity: 1,
+              y: 0,
+              scale: 1,
+            }}
+            exit={{
+              opacity: 0,
+              y: 20,
+              scale: 0.96,
+            }}
             transition={{ duration: 0.2 }}
-            onMouseDown={(event) => event.stopPropagation()}
+            onMouseDown={(event) =>
+              event.stopPropagation()
+            }
+            className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white shadow-2xl"
           >
-            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
+            {/* Header */}
+
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white px-6 py-5">
               <div>
                 <h2 className="text-lg font-bold text-slate-900">
-                  {transaction
+                  {isEditing
                     ? "Edit Transaction"
                     : "Add Transaction"}
                 </h2>
 
-                <p className="mt-1 text-sm text-slate-500">
+                <p className="mt-1 text-xs text-slate-400">
                   Record your income or expense.
                 </p>
               </div>
 
               <button
+                type="button"
                 onClick={onClose}
-                className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                className="rounded-xl p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
               >
                 <X size={20} />
               </button>
@@ -139,41 +202,61 @@ export default function TransactionModal({
             >
               {/* Type */}
 
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => handleTypeChange("income")}
-                  className={`rounded-xl border px-4 py-3 text-sm font-semibold transition ${
-                    form.type === "income"
-                      ? "border-emerald-500 bg-emerald-50 text-emerald-700"
-                      : "border-slate-200 text-slate-500 hover:bg-slate-50"
-                  }`}
-                >
-                  Income
-                </button>
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-slate-700">
+                  Transaction Type
+                </label>
 
-                <button
-                  type="button"
-                  onClick={() => handleTypeChange("expense")}
-                  className={`rounded-xl border px-4 py-3 text-sm font-semibold transition ${
-                    form.type === "expense"
-                      ? "border-red-500 bg-red-50 text-red-700"
-                      : "border-slate-200 text-slate-500 hover:bg-slate-50"
-                  }`}
-                >
-                  Expense
-                </button>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleTypeChange("income")
+                    }
+                    className={`rounded-xl border px-4 py-3 text-sm font-semibold transition ${
+                      form.type === "income"
+                        ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                        : "border-slate-200 text-slate-500 hover:bg-slate-50"
+                    }`}
+                  >
+                    Income
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleTypeChange("expense")
+                    }
+                    className={`rounded-xl border px-4 py-3 text-sm font-semibold transition ${
+                      form.type === "expense"
+                        ? "border-red-500 bg-red-50 text-red-700"
+                        : "border-slate-200 text-slate-500 hover:bg-slate-50"
+                    }`}
+                  >
+                    Expense
+                  </button>
+                </div>
               </div>
 
               {/* Amount */}
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
+                <label className="mb-2 block text-sm font-semibold text-slate-700">
                   Amount
                 </label>
 
-                <div className="flex overflow-hidden rounded-xl border border-slate-200 focus-within:border-slate-500">
-                  <span className="flex items-center bg-slate-50 px-4 text-slate-500">
+                <div
+                  className={`flex overflow-hidden rounded-xl border ${
+                    errors.amount
+                      ? "border-red-400"
+                      : "border-slate-200"
+                  }`}
+                >
+                  <div className="flex items-center bg-slate-50 px-4 text-slate-500">
+                    <CircleDollarSign size={17} />
+                  </div>
+
+                  <span className="flex items-center bg-slate-50 pr-2 text-sm text-slate-500">
                     ৳
                   </span>
 
@@ -182,97 +265,173 @@ export default function TransactionModal({
                     name="amount"
                     value={form.amount}
                     onChange={handleChange}
-                    placeholder="0.00"
+                    placeholder="0"
                     min="0"
                     step="0.01"
-                    className="w-full border-0 px-4 py-3 outline-none"
+                    className="w-full border-0 px-3 py-3 text-sm outline-none"
                   />
                 </div>
+
+                {errors.amount && (
+                  <ErrorMessage
+                    message={errors.amount}
+                  />
+                )}
               </div>
 
               {/* Category */}
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
+                <label className="mb-2 block text-sm font-semibold text-slate-700">
                   Category
                 </label>
 
-                <select
-                  name="category"
-                  value={form.category}
-                  onChange={handleChange}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-slate-500"
-                >
-                  <option value="">
-                    Select category
-                  </option>
+                <div className="relative">
+                  <Tag
+                    size={17}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                  />
 
-                  {categories[form.type].map((category) => (
-                    <option
-                      key={category}
-                      value={category}
-                    >
-                      {category}
+                  <select
+                    name="category"
+                    value={form.category}
+                    onChange={handleChange}
+                    className={`w-full appearance-none rounded-xl border bg-white py-3 pl-11 pr-4 text-sm outline-none ${
+                      errors.category
+                        ? "border-red-400"
+                        : "border-slate-200"
+                    }`}
+                  >
+                    <option value="">
+                      Select category
                     </option>
-                  ))}
-                </select>
+
+                    {categories[form.type].map(
+                      (category) => (
+                        <option
+                          key={category}
+                          value={category}
+                        >
+                          {category}
+                        </option>
+                      ),
+                    )}
+                  </select>
+                </div>
+
+                {errors.category && (
+                  <ErrorMessage
+                    message={errors.category}
+                  />
+                )}
               </div>
 
               {/* Account */}
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
+                <label className="mb-2 block text-sm font-semibold text-slate-700">
                   Account
                 </label>
 
-                <select
-                  name="account"
-                  value={form.account}
-                  onChange={handleChange}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-slate-500"
-                >
-                  <option value="Cash">Cash</option>
-                  <option value="Bank">Bank</option>
-                  <option value="Mobile Banking">
-                    Mobile Banking
-                  </option>
-                </select>
+                <div className="relative">
+                  <Wallet
+                    size={17}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                  />
+
+                  <select
+                    name="account"
+                    value={form.account}
+                    onChange={handleChange}
+                    className="w-full appearance-none rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm outline-none focus:border-slate-400"
+                  >
+                    <option value="Cash">
+                      Cash
+                    </option>
+
+                    <option value="Bank">
+                      Bank
+                    </option>
+
+                    <option value="Mobile Banking">
+                      Mobile Banking
+                    </option>
+                  </select>
+                </div>
+
+                {errors.account && (
+                  <ErrorMessage
+                    message={errors.account}
+                  />
+                )}
               </div>
 
               {/* Date */}
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
+                <label className="mb-2 block text-sm font-semibold text-slate-700">
                   Date
                 </label>
 
-                <input
-                  type="date"
-                  name="date"
-                  value={form.date}
-                  onChange={handleChange}
-                  className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-slate-500"
-                />
+                <div className="relative">
+                  <CalendarDays
+                    size={17}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                  />
+
+                  <input
+                    type="date"
+                    name="date"
+                    value={form.date}
+                    onChange={handleChange}
+                    className={`w-full rounded-xl border py-3 pl-11 pr-4 text-sm outline-none ${
+                      errors.date
+                        ? "border-red-400"
+                        : "border-slate-200"
+                    }`}
+                  />
+                </div>
+
+                {errors.date && (
+                  <ErrorMessage
+                    message={errors.date}
+                  />
+                )}
               </div>
 
               {/* Description */}
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
+                <label className="mb-2 block text-sm font-semibold text-slate-700">
                   Description
+                  <span className="ml-1 font-normal text-slate-400">
+                    (Optional)
+                  </span>
                 </label>
 
-                <textarea
-                  name="description"
-                  value={form.description}
-                  onChange={handleChange}
-                  rows="3"
-                  placeholder="Optional description..."
-                  className="w-full resize-none rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-slate-500"
-                />
+                <div className="relative">
+                  <FileText
+                    size={17}
+                    className="absolute left-4 top-4 text-slate-400"
+                  />
+
+                  <textarea
+                    name="description"
+                    value={form.description}
+                    onChange={handleChange}
+                    maxLength={200}
+                    rows={3}
+                    placeholder="Add a note..."
+                    className="w-full resize-none rounded-xl border border-slate-200 px-11 py-3 text-sm outline-none focus:border-slate-400"
+                  />
+                </div>
+
+                <div className="mt-1 text-right text-[10px] text-slate-400">
+                  {form.description.length}/200
+                </div>
               </div>
 
-              {/* Buttons */}
+              {/* Actions */}
 
               <div className="flex justify-end gap-3 border-t border-slate-100 pt-5">
                 <button
@@ -285,13 +444,15 @@ export default function TransactionModal({
 
                 <button
                   type="submit"
-                  className={`rounded-xl px-6 py-3 text-sm font-semibold text-white transition ${
+                  className={`rounded-xl px-6 py-3 text-sm font-semibold text-white shadow-sm transition ${
                     form.type === "income"
                       ? "bg-emerald-600 hover:bg-emerald-700"
                       : "bg-red-600 hover:bg-red-700"
                   }`}
                 >
-                  {transaction ? "Update" : "Save Transaction"}
+                  {isEditing
+                    ? "Update Transaction"
+                    : "Save Transaction"}
                 </button>
               </div>
             </form>
@@ -299,5 +460,14 @@ export default function TransactionModal({
         </motion.div>
       )}
     </AnimatePresence>
+  );
+}
+
+function ErrorMessage({ message }) {
+  return (
+    <p className="mt-1.5 flex items-center gap-1 text-xs text-red-500">
+      <AlertCircle size={13} />
+      {message}
+    </p>
   );
 }
