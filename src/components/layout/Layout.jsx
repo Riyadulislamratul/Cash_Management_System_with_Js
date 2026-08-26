@@ -3,13 +3,13 @@ import Header from "./Header";
 
 export default function Layout({ children }) {
   return (
-    <div className="app-layout">
+    <div className="min-h-screen bg-slate-50">
       <Sidebar />
 
-      <div className="main-area">
+      <div className="lg:ml-64">
         <Header />
 
-        <main className="page-content">
+        <main className="p-4 sm:p-6 lg:p-8">
           {children}
         </main>
       </div>
