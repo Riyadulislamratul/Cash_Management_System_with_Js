@@ -8,18 +8,14 @@ import {
 } from "lucide-react";
 
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
 
 import SummaryCard from "../components/dashboard/SummaryCard";
 import { useCash } from "../context/CashContext";
 import { formatCurrency } from "../utils/calculations";
 
 export default function Dashboard() {
-  const {
-    totalCash,
-    totalIncome,
-    totalExpense,
-    transactions,
-  } = useCash();
+  const { totalCash, totalIncome, totalExpense, transactions } = useCash();
 
   const recentTransactions = transactions.slice(0, 5);
 
@@ -97,28 +93,25 @@ export default function Dashboard() {
       >
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-5">
           <div>
-            <h2 className="font-bold text-slate-900">
-              Recent Transactions
-            </h2>
+            <h2 className="font-bold text-slate-900">Recent Transactions</h2>
 
             <p className="mt-1 text-xs text-slate-400">
               Your latest cash activities
             </p>
           </div>
 
-          <a
-            href="/transactions"
+          <Link
+            to="/transactions"
             className="text-xs font-semibold text-slate-600 hover:text-slate-900"
           >
             View all →
-          </a>
+          </Link>
         </div>
 
         {recentTransactions.length > 0 ? (
           <div>
             {recentTransactions.map((transaction) => {
-              const isIncome =
-                transaction.type === "income";
+              const isIncome = transaction.type === "income";
 
               return (
                 <div
@@ -149,8 +142,7 @@ export default function Dashboard() {
                     </p>
 
                     <p className="truncate text-xs text-slate-400">
-                      {transaction.description ||
-                        "No description"}
+                      {transaction.description || "No description"}
                     </p>
                   </div>
 
@@ -170,9 +162,7 @@ export default function Dashboard() {
 
                   <p
                     className={`w-28 text-right text-sm font-bold ${
-                      isIncome
-                        ? "text-emerald-600"
-                        : "text-red-600"
+                      isIncome ? "text-emerald-600" : "text-red-600"
                     }`}
                   >
                     {isIncome ? "+" : "-"}
@@ -184,10 +174,7 @@ export default function Dashboard() {
           </div>
         ) : (
           <div className="px-6 py-16 text-center">
-            <Wallet
-              size={36}
-              className="mx-auto text-slate-300"
-            />
+            <Wallet size={36} className="mx-auto text-slate-300" />
 
             <h3 className="mt-3 text-sm font-semibold text-slate-700">
               No transactions yet

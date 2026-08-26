@@ -3,5 +3,5 @@ export function formatCurrency(amount) {
     style: "currency",
     currency: "BDT",
     maximumFractionDigits: 0,
-  }).format(amount);
+  }).format(Number(amount) || 0);
 }

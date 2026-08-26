@@ -1,6 +1,6 @@
 export const initialTransactions = [
   {
-    id: 1,
+    id: "demo-1",
     type: "income",
     amount: 50000,
     category: "Salary",
@@ -9,7 +9,7 @@ export const initialTransactions = [
     date: "2026-08-25",
   },
   {
-    id: 2,
+    id: "demo-2",
     type: "expense",
     amount: 1200,
     category: "Food",
@@ -18,7 +18,7 @@ export const initialTransactions = [
     date: "2026-08-25",
   },
   {
-    id: 3,
+    id: "demo-3",
     type: "expense",
     amount: 3500,
     category: "Shopping",
@@ -26,30 +26,21 @@ export const initialTransactions = [
     description: "Monthly shopping",
     date: "2026-08-24",
   },
-  {
-    id: 4,
-    type: "income",
-    amount: 15000,
-    category: "Freelance",
-    account: "Bank",
-    description: "Freelance project",
-    date: "2026-08-23",
-  },
 ];
 
 export const initialAccounts = [
   {
-    id: 1,
+    id: "cash",
     name: "Cash",
     type: "cash",
   },
   {
-    id: 2,
+    id: "bank",
     name: "Bank",
     type: "bank",
   },
   {
-    id: 3,
+    id: "mobile",
     name: "Mobile Banking",
     type: "mobile",
   },

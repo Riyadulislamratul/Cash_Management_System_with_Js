@@ -2,15 +2,21 @@ const STORAGE_KEY = "cash-management-transactions";
 
 export function getTransactions() {
   try {
-    const storedData = localStorage.getItem(STORAGE_KEY);
+    const stored = localStorage.getItem(STORAGE_KEY);
 
-    if (!storedData) {
+    if (!stored) {
       return [];
     }
 
-    return JSON.parse(storedData);
+    const parsed = JSON.parse(stored);
+
+    return Array.isArray(parsed) ? parsed : [];
   } catch (error) {
-    console.error("Failed to load transactions:", error);
+    console.error(
+      "Error loading transactions:",
+      error,
+    );
+
     return [];
   }
 }
@@ -19,10 +25,13 @@ export function saveTransactions(transactions) {
   try {
     localStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify(transactions)
+      JSON.stringify(transactions),
     );
   } catch (error) {
-    console.error("Failed to save transactions:", error);
+    console.error(
+      "Error saving transactions:",
+      error,
+    );
   }
 }
 
