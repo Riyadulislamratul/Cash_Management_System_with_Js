@@ -6,30 +6,58 @@ import {
   useState,
 } from "react";
 
-import { initialTransactions, initialAccounts } from "../data/initialData";
+import { initialTransactions } from "../data/initialData";
+
 import {
-  getTransactions,
-  saveTransactions,
-} from "../utils/storage";
+  calculateAccountBalances,
+  calculateTotals,
+} from "../utils/calculations";
 
 const CashContext = createContext(null);
 
+const STORAGE_KEY =
+  "cash-management-transactions";
+
 export function CashProvider({ children }) {
-  const [transactions, setTransactions] = useState(() => {
-    const storedTransactions = getTransactions();
+  const [transactions, setTransactions] = useState(
+    () => {
+      try {
+        const saved =
+          localStorage.getItem(STORAGE_KEY);
 
-    if (storedTransactions.length > 0) {
-      return storedTransactions;
-    }
+        if (saved) {
+          return JSON.parse(saved);
+        }
 
-    return initialTransactions;
-  });
+        return initialTransactions;
+      } catch (error) {
+        console.error(
+          "Failed to load transactions:",
+          error,
+        );
 
-  const [accounts] = useState(initialAccounts);
+        return initialTransactions;
+      }
+    },
+  );
 
   useEffect(() => {
-    saveTransactions(transactions);
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(transactions),
+    );
   }, [transactions]);
+
+  const totals = useMemo(
+    () => calculateTotals(transactions),
+    [transactions],
+  );
+
+  const accountBalances = useMemo(
+    () =>
+      calculateAccountBalances(transactions),
+    [transactions],
+  );
 
   const addTransaction = (transaction) => {
     const newTransaction = {
@@ -45,57 +73,107 @@ export function CashProvider({ children }) {
     ]);
   };
 
-  const updateTransaction = (id, updatedTransaction) => {
+  const updateTransaction = (
+    id,
+    updatedTransaction,
+  ) => {
     setTransactions((current) =>
       current.map((transaction) =>
         transaction.id === id
           ? {
               ...transaction,
               ...updatedTransaction,
-              amount: Number(updatedTransaction.amount),
+              amount: Number(
+                updatedTransaction.amount,
+              ),
             }
-          : transaction
-      )
+          : transaction,
+      ),
     );
   };
 
   const deleteTransaction = (id) => {
     setTransactions((current) =>
-      current.filter((transaction) => transaction.id !== id)
+      current.filter(
+        (transaction) => transaction.id !== id,
+      ),
     );
   };
 
-  const totalIncome = useMemo(() => {
-    return transactions
-      .filter((transaction) => transaction.type === "income")
-      .reduce(
-        (total, transaction) => total + Number(transaction.amount),
-        0
-      );
-  }, [transactions]);
+  const addTransfer = ({
+    fromAccount,
+    toAccount,
+    amount,
+    date,
+    description,
+  }) => {
+    const numericAmount = Number(amount);
 
-  const totalExpense = useMemo(() => {
-    return transactions
-      .filter((transaction) => transaction.type === "expense")
-      .reduce(
-        (total, transaction) => total + Number(transaction.amount),
-        0
-      );
-  }, [transactions]);
+    if (
+      !fromAccount ||
+      !toAccount ||
+      fromAccount === toAccount ||
+      numericAmount <= 0
+    ) {
+      return false;
+    }
 
-  const totalCash = totalIncome - totalExpense;
+    const transferId = crypto.randomUUID();
+
+    const outgoing = {
+      id: `${transferId}-out`,
+      type: "transfer",
+      transferType: "out",
+      amount: numericAmount,
+      account: fromAccount,
+      category: "Transfer",
+      description:
+        description ||
+        `Transfer to ${toAccount}`,
+      date,
+      transferId,
+      relatedAccount: toAccount,
+      createdAt: new Date().toISOString(),
+    };
+
+    const incoming = {
+      id: `${transferId}-in`,
+      type: "transfer",
+      transferType: "in",
+      amount: numericAmount,
+      account: toAccount,
+      category: "Transfer",
+      description:
+        description ||
+        `Transfer from ${fromAccount}`,
+      date,
+      transferId,
+      relatedAccount: fromAccount,
+      createdAt: new Date().toISOString(),
+    };
+
+    setTransactions((current) => [
+      incoming,
+      outgoing,
+      ...current,
+    ]);
+
+    return true;
+  };
 
   const value = {
     transactions,
-    accounts,
 
-    totalIncome,
-    totalExpense,
-    totalCash,
+    totalIncome: totals.income,
+    totalExpense: totals.expense,
+    totalCash: totals.balance,
+
+    accountBalances,
 
     addTransaction,
     updateTransaction,
     deleteTransaction,
+    addTransfer,
   };
 
   return (
@@ -110,7 +188,7 @@ export function useCash() {
 
   if (!context) {
     throw new Error(
-      "useCash must be used inside CashProvider"
+      "useCash must be used inside CashProvider",
     );
   }
 
