@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 
 import Layout from "./components/layout/Layout";
 
@@ -10,28 +10,41 @@ import Settings from "./pages/Settings";
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Layout>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route
-            path="/transactions"
-            element={<Transactions />}
-          />
-          <Route
-            path="/accounts"
-            element={<Accounts />}
-          />
-          <Route
-            path="/reports"
-            element={<Reports />}
-          />
-          <Route
-            path="/settings"
-            element={<Settings />}
-          />
-        </Routes>
-      </Layout>
-    </BrowserRouter>
+    <Layout>
+      <Routes>
+        {/* Dashboard */}
+        <Route path="/" element={<Dashboard />} />
+
+        {/* Transactions */}
+        <Route
+          path="/transactions"
+          element={<Transactions />}
+        />
+
+        {/* Accounts */}
+        <Route
+          path="/accounts"
+          element={<Accounts />}
+        />
+
+        {/* Reports */}
+        <Route
+          path="/reports"
+          element={<Reports />}
+        />
+
+        {/* Settings */}
+        <Route
+          path="/settings"
+          element={<Settings />}
+        />
+
+        {/* Unknown routes */}
+        <Route
+          path="*"
+          element={<Navigate to="/" replace />}
+        />
+      </Routes>
+    </Layout>
   );
 }

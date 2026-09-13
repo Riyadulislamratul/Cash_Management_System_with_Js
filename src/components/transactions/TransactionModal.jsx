@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+
 import {
   AlertCircle,
   CalendarDays,
@@ -8,7 +9,10 @@ import {
   Wallet,
   X,
 } from "lucide-react";
+
 import { motion, AnimatePresence } from "framer-motion";
+
+import { useSettings } from "../../context/SettingsContext";
 
 const defaultForm = {
   type: "income",
@@ -42,16 +46,29 @@ const categories = {
   ],
 };
 
+const currencySymbols = {
+  BDT: "৳",
+  USD: "$",
+  EUR: "€",
+  GBP: "£",
+  INR: "₹",
+};
+
 export default function TransactionModal({
   open,
   onClose,
   onSubmit,
   transaction,
 }) {
+  const { currency } = useSettings();
+
   const [form, setForm] = useState(defaultForm);
   const [errors, setErrors] = useState({});
 
   const isEditing = Boolean(transaction);
+
+  const currencySymbol =
+    currencySymbols[currency] || currency;
 
   useEffect(() => {
     if (transaction) {
@@ -64,7 +81,10 @@ export default function TransactionModal({
         date: transaction.date,
       });
     } else {
-      setForm(defaultForm);
+      setForm({
+        ...defaultForm,
+        date: new Date().toISOString().split("T")[0],
+      });
     }
 
     setErrors({});
@@ -101,9 +121,17 @@ export default function TransactionModal({
   const validate = () => {
     const newErrors = {};
 
-    if (!form.amount) {
+    const amount = Number(form.amount);
+
+    if (
+      form.amount === "" ||
+      form.amount === null ||
+      form.amount === undefined
+    ) {
       newErrors.amount = "Amount is required.";
-    } else if (Number(form.amount) <= 0) {
+    } else if (!Number.isFinite(amount)) {
+      newErrors.amount = "Please enter a valid amount.";
+    } else if (amount <= 0) {
       newErrors.amount =
         "Amount must be greater than zero.";
     }
@@ -122,6 +150,11 @@ export default function TransactionModal({
       newErrors.date = "Please select a date.";
     }
 
+    if (form.description.length > 200) {
+      newErrors.description =
+        "Description cannot exceed 200 characters.";
+    }
+
     setErrors(newErrors);
 
     return Object.keys(newErrors).length === 0;
@@ -137,6 +170,7 @@ export default function TransactionModal({
     onSubmit({
       ...form,
       amount: Number(form.amount),
+      description: form.description.trim(),
     });
   };
 
@@ -173,7 +207,6 @@ export default function TransactionModal({
             className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white shadow-2xl"
           >
             {/* Header */}
-
             <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white px-6 py-5">
               <div>
                 <h2 className="text-lg font-bold text-slate-900">
@@ -191,6 +224,7 @@ export default function TransactionModal({
                 type="button"
                 onClick={onClose}
                 className="rounded-xl p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                aria-label="Close transaction form"
               >
                 <X size={20} />
               </button>
@@ -201,7 +235,6 @@ export default function TransactionModal({
               className="space-y-5 p-6"
             >
               {/* Type */}
-
               <div>
                 <label className="mb-2 block text-sm font-semibold text-slate-700">
                   Transaction Type
@@ -239,7 +272,6 @@ export default function TransactionModal({
               </div>
 
               {/* Amount */}
-
               <div>
                 <label className="mb-2 block text-sm font-semibold text-slate-700">
                   Amount
@@ -256,8 +288,8 @@ export default function TransactionModal({
                     <CircleDollarSign size={17} />
                   </div>
 
-                  <span className="flex items-center bg-slate-50 pr-2 text-sm text-slate-500">
-                    ৳
+                  <span className="flex items-center bg-slate-50 px-2 text-sm font-medium text-slate-500">
+                    {currencySymbol}
                   </span>
 
                   <input
@@ -268,6 +300,7 @@ export default function TransactionModal({
                     placeholder="0"
                     min="0"
                     step="0.01"
+                    inputMode="decimal"
                     className="w-full border-0 px-3 py-3 text-sm outline-none"
                   />
                 </div>
@@ -280,7 +313,6 @@ export default function TransactionModal({
               </div>
 
               {/* Category */}
-
               <div>
                 <label className="mb-2 block text-sm font-semibold text-slate-700">
                   Category
@@ -327,7 +359,6 @@ export default function TransactionModal({
               </div>
 
               {/* Account */}
-
               <div>
                 <label className="mb-2 block text-sm font-semibold text-slate-700">
                   Account
@@ -343,7 +374,11 @@ export default function TransactionModal({
                     name="account"
                     value={form.account}
                     onChange={handleChange}
-                    className="w-full appearance-none rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm outline-none focus:border-slate-400"
+                    className={`w-full appearance-none rounded-xl border bg-white py-3 pl-11 pr-4 text-sm outline-none ${
+                      errors.account
+                        ? "border-red-400"
+                        : "border-slate-200"
+                    }`}
                   >
                     <option value="Cash">
                       Cash
@@ -367,7 +402,6 @@ export default function TransactionModal({
               </div>
 
               {/* Date */}
-
               <div>
                 <label className="mb-2 block text-sm font-semibold text-slate-700">
                   Date
@@ -400,7 +434,6 @@ export default function TransactionModal({
               </div>
 
               {/* Description */}
-
               <div>
                 <label className="mb-2 block text-sm font-semibold text-slate-700">
                   Description
@@ -422,17 +455,32 @@ export default function TransactionModal({
                     maxLength={200}
                     rows={3}
                     placeholder="Add a note..."
-                    className="w-full resize-none rounded-xl border border-slate-200 px-11 py-3 text-sm outline-none focus:border-slate-400"
+                    className={`w-full resize-none rounded-xl border px-11 py-3 text-sm outline-none ${
+                      errors.description
+                        ? "border-red-400"
+                        : "border-slate-200"
+                    }`}
                   />
                 </div>
 
-                <div className="mt-1 text-right text-[10px] text-slate-400">
+                <div
+                  className={`mt-1 text-right text-[10px] ${
+                    form.description.length >= 200
+                      ? "text-red-500"
+                      : "text-slate-400"
+                  }`}
+                >
                   {form.description.length}/200
                 </div>
+
+                {errors.description && (
+                  <ErrorMessage
+                    message={errors.description}
+                  />
+                )}
               </div>
 
               {/* Actions */}
-
               <div className="flex justify-end gap-3 border-t border-slate-100 pt-5">
                 <button
                   type="button"
