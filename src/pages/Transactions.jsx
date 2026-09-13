@@ -11,6 +11,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 
 import { useCash } from "../context/CashContext";
+import { useSettings } from "../context/SettingsContext";
 import { formatCurrency } from "../utils/calculations";
 
 import TransactionModal from "../components/transactions/TransactionModal";
@@ -24,6 +25,8 @@ export default function Transactions() {
     deleteTransaction,
   } = useCash();
 
+  const { currency } = useSettings();
+
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] =
     useState(null);
@@ -32,6 +35,10 @@ export default function Transactions() {
 
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
+
+  /* =========================================================
+     FILTER TRANSACTIONS
+  ========================================================= */
 
   const filteredTransactions = useMemo(() => {
     const searchValue = search.trim().toLowerCase();
@@ -62,15 +69,27 @@ export default function Transactions() {
     });
   }, [transactions, search, filter]);
 
+  /* =========================================================
+     ADD TRANSACTION
+  ========================================================= */
+
   const handleAdd = () => {
     setEditingTransaction(null);
     setModalOpen(true);
   };
 
+  /* =========================================================
+     EDIT TRANSACTION
+  ========================================================= */
+
   const handleEdit = (transaction) => {
     setEditingTransaction(transaction);
     setModalOpen(true);
   };
+
+  /* =========================================================
+     SUBMIT TRANSACTION
+  ========================================================= */
 
   const handleSubmit = (data) => {
     if (editingTransaction) {
@@ -86,6 +105,10 @@ export default function Transactions() {
     setEditingTransaction(null);
   };
 
+  /* =========================================================
+     DELETE TRANSACTION
+  ========================================================= */
+
   const handleDelete = () => {
     if (!deleteId) {
       return;
@@ -94,6 +117,10 @@ export default function Transactions() {
     deleteTransaction(deleteId);
     setDeleteId(null);
   };
+
+  /* =========================================================
+     STATISTICS
+  ========================================================= */
 
   const incomeCount = transactions.filter(
     (item) => item.type === "income",
@@ -105,7 +132,9 @@ export default function Transactions() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
-      {/* Header */}
+      {/* =====================================================
+          HEADER
+      ====================================================== */}
 
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
@@ -127,9 +156,13 @@ export default function Transactions() {
         </button>
       </div>
 
-      {/* Statistics */}
+      {/* =====================================================
+          STATISTICS
+      ====================================================== */}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {/* Total */}
+
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <p className="text-xs font-medium text-slate-400">
             Total Transactions
@@ -140,6 +173,8 @@ export default function Transactions() {
           </p>
         </div>
 
+        {/* Income */}
+
         <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-5">
           <p className="text-xs font-medium text-emerald-600">
             Income Transactions
@@ -149,6 +184,8 @@ export default function Transactions() {
             {incomeCount}
           </p>
         </div>
+
+        {/* Expense */}
 
         <div className="rounded-2xl border border-red-100 bg-red-50/50 p-5">
           <p className="text-xs font-medium text-red-600">
@@ -161,10 +198,14 @@ export default function Transactions() {
         </div>
       </div>
 
-      {/* Search */}
+      {/* =====================================================
+          SEARCH + FILTER
+      ====================================================== */}
 
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex flex-col gap-3 lg:flex-row">
+          {/* Search */}
+
           <div className="relative flex-1">
             <Search
               size={18}
@@ -181,6 +222,8 @@ export default function Transactions() {
               className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-11 pr-4 text-sm outline-none transition focus:border-slate-400 focus:bg-white"
             />
           </div>
+
+          {/* Filter */}
 
           <div className="flex items-center gap-2">
             <div className="flex h-11 items-center justify-center rounded-xl bg-slate-100 px-3 text-slate-500">
@@ -209,6 +252,8 @@ export default function Transactions() {
           </div>
         </div>
 
+        {/* Filter status */}
+
         {(search || filter !== "all") && (
           <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3">
             <p className="text-xs text-slate-400">
@@ -229,7 +274,9 @@ export default function Transactions() {
         )}
       </div>
 
-      {/* Table */}
+      {/* =====================================================
+          TRANSACTIONS TABLE
+      ====================================================== */}
 
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
@@ -265,6 +312,9 @@ export default function Transactions() {
                     const isIncome =
                       transaction.type === "income";
 
+                    const isTransfer =
+                      transaction.type === "transfer";
+
                     return (
                       <motion.tr
                         key={transaction.id}
@@ -283,18 +333,24 @@ export default function Transactions() {
                         }}
                         className="border-b border-slate-100 last:border-0"
                       >
-                        {/* Transaction */}
+                        {/* =================================================
+                            TRANSACTION
+                        ================================================== */}
 
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
                             <div
                               className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-                                isIncome
-                                  ? "bg-emerald-50 text-emerald-600"
-                                  : "bg-red-50 text-red-600"
+                                isTransfer
+                                  ? "bg-blue-50 text-blue-600"
+                                  : isIncome
+                                    ? "bg-emerald-50 text-emerald-600"
+                                    : "bg-red-50 text-red-600"
                               }`}
                             >
-                              {isIncome ? (
+                              {isTransfer ? (
+                                <ArrowRightLeftIcon />
+                              ) : isIncome ? (
                                 <ArrowDownLeft
                                   size={19}
                                 />
@@ -307,7 +363,10 @@ export default function Transactions() {
 
                             <div className="min-w-0">
                               <p className="truncate text-sm font-semibold text-slate-800">
-                                {transaction.category}
+                                {transaction.category ||
+                                  (isTransfer
+                                    ? "Transfer"
+                                    : "Transaction")}
                               </p>
 
                               <p className="mt-1 max-w-xs truncate text-xs text-slate-400">
@@ -318,7 +377,9 @@ export default function Transactions() {
                           </div>
                         </td>
 
-                        {/* Account */}
+                        {/* =================================================
+                            ACCOUNT
+                        ================================================== */}
 
                         <td className="px-6 py-4">
                           <span className="rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-medium text-slate-600">
@@ -326,28 +387,39 @@ export default function Transactions() {
                           </span>
                         </td>
 
-                        {/* Date */}
+                        {/* =================================================
+                            DATE
+                        ================================================== */}
 
                         <td className="px-6 py-4 text-sm text-slate-500">
                           {transaction.date}
                         </td>
 
-                        {/* Amount */}
+                        {/* =================================================
+                            AMOUNT
+                        ================================================== */}
 
                         <td
                           className={`px-6 py-4 text-right text-sm font-bold ${
-                            isIncome
-                              ? "text-emerald-600"
-                              : "text-red-600"
+                            isTransfer
+                              ? "text-blue-600"
+                              : isIncome
+                                ? "text-emerald-600"
+                                : "text-red-600"
                           }`}
                         >
-                          {isIncome ? "+" : "-"}
+                          {!isTransfer &&
+                            (isIncome ? "+" : "-")}
+
                           {formatCurrency(
                             transaction.amount,
+                            currency,
                           )}
                         </td>
 
-                        {/* Actions */}
+                        {/* =================================================
+                            ACTIONS
+                        ================================================== */}
 
                         <td className="px-6 py-4">
                           <div className="flex justify-end gap-1">
@@ -385,7 +457,9 @@ export default function Transactions() {
           </table>
         </div>
 
-        {/* Empty */}
+        {/* =====================================================
+            EMPTY STATE
+        ====================================================== */}
 
         {filteredTransactions.length === 0 && (
           <div className="px-6 py-20 text-center">
@@ -419,7 +493,9 @@ export default function Transactions() {
         )}
       </div>
 
-      {/* Modal */}
+      {/* =====================================================
+          TRANSACTION MODAL
+      ====================================================== */}
 
       <TransactionModal
         open={modalOpen}
@@ -431,7 +507,9 @@ export default function Transactions() {
         transaction={editingTransaction}
       />
 
-      {/* Delete Confirmation */}
+      {/* =====================================================
+          DELETE CONFIRMATION
+      ====================================================== */}
 
       <ConfirmDialog
         open={Boolean(deleteId)}
@@ -439,5 +517,29 @@ export default function Transactions() {
         onConfirm={handleDelete}
       />
     </div>
+  );
+}
+
+/* =========================================================
+   TRANSFER ICON
+========================================================= */
+
+function ArrowRightLeftIcon() {
+  return (
+    <svg
+      width="19"
+      height="19"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="m16 3 4 4-4 4" />
+      <path d="M20 7H4" />
+      <path d="m8 21-4-4 4-4" />
+      <path d="M4 17h16" />
+    </svg>
   );
 }
