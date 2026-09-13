@@ -16,6 +16,7 @@ import {
 import { motion } from "framer-motion";
 
 import { useCash } from "../context/CashContext";
+import { useSettings } from "../context/SettingsContext";
 
 import { formatCurrency } from "../utils/calculations";
 
@@ -61,6 +62,7 @@ const reportTypes = [
 
 export default function Reports() {
   const { transactions } = useCash();
+  const { currency } = useSettings();
 
   const [reportType, setReportType] = useState("monthly");
 
@@ -69,9 +71,6 @@ export default function Reports() {
 
   /*
    * Get all valid transaction dates.
-   *
-   * We use the dates from the actual stored transactions instead
-   * of automatically assuming the current month.
    */
   const transactionDates = useMemo(() => {
     return transactions
@@ -83,27 +82,27 @@ export default function Reports() {
   }, [transactions]);
 
   /*
-   * Automatically select the date range covering
-   * all existing transactions when Reports first loads.
+   * Automatically select a range covering
+   * all existing transactions.
    */
   useEffect(() => {
     if (!transactionDates.length) {
       return;
     }
 
-    // Only set the automatic range when no range
-    // has been selected yet.
     if (!startDate && !endDate) {
       setStartDate(transactionDates[0]);
-      setEndDate(transactionDates[transactionDates.length - 1]);
+      setEndDate(
+        transactionDates[transactionDates.length - 1],
+      );
     }
   }, [transactionDates, startDate, endDate]);
 
   /*
-   * Filter transactions according to selected date range.
+   * Income/expense report transactions.
    *
-   * Transfer transactions are excluded here because
-   * transfers are not income or expenses.
+   * Transfers are excluded because transfers
+   * are not income or expenses.
    */
   const reportTransactions = useMemo(() => {
     return getReportTransactions(
@@ -114,8 +113,8 @@ export default function Reports() {
   }, [transactions, startDate, endDate]);
 
   /*
-   * Account-wise reports need transfer transactions
-   * because transfers change account balances.
+   * Account reports include transfers because
+   * transfers change account balances.
    */
   const accountReportTransactions = useMemo(() => {
     return transactions.filter((transaction) => {
@@ -136,14 +135,14 @@ export default function Reports() {
   }, [transactions, startDate, endDate]);
 
   /*
-   * Calculate income, expense and balance.
+   * Calculate report totals.
    */
   const totals = useMemo(() => {
     return getReportTotals(reportTransactions);
   }, [reportTransactions]);
 
   /*
-   * Generate data for the selected report type.
+   * Generate report data.
    */
   const data = useMemo(() => {
     switch (reportType) {
@@ -189,7 +188,7 @@ export default function Reports() {
   ]);
 
   /*
-   * Check whether selected dates are valid.
+   * Validate date range.
    */
   const invalidDateRange =
     startDate &&
@@ -197,11 +196,12 @@ export default function Reports() {
     startDate > endDate;
 
   /*
-   * Reset the date range to include all transactions.
+   * Reset dates to include all transactions.
    */
   const handleResetDates = () => {
     if (transactionDates.length) {
       setStartDate(transactionDates[0]);
+
       setEndDate(
         transactionDates[transactionDates.length - 1],
       );
@@ -213,6 +213,9 @@ export default function Reports() {
 
   /*
    * PDF download.
+   *
+   * Numeric values are formatted using
+   * the currently selected currency.
    */
   const handlePDF = () => {
     if (!data.length || invalidDateRange) {
@@ -226,7 +229,7 @@ export default function Reports() {
         const value = item[column];
 
         return typeof value === "number"
-          ? formatCurrency(value)
+          ? formatCurrency(value, currency)
           : value;
       }),
     );
@@ -235,12 +238,15 @@ export default function Reports() {
       title: `Cash Management - ${getReportTitle(
         reportType,
       )}`,
+
       subtitle:
         startDate && endDate
           ? `${startDate} to ${endDate}`
           : "All available transactions",
+
       columns,
       rows,
+
       filename: `cash-report-${reportType}.pdf`,
     });
   };
@@ -407,14 +413,19 @@ export default function Reports() {
         {!invalidDateRange && (
           <div className="mt-4 flex items-center justify-between text-xs text-slate-400">
             <span>
-              {reportTransactions.length} income/expense transaction
-              {reportTransactions.length !== 1 ? "s" : ""}
+              {reportTransactions.length} income/expense
+              transaction
+              {reportTransactions.length !== 1
+                ? "s"
+                : ""}
             </span>
 
             {transactions.length > 0 && (
               <span>
                 {transactions.length} total transaction
-                {transactions.length !== 1 ? "s" : ""}
+                {transactions.length !== 1
+                  ? "s"
+                  : ""}
               </span>
             )}
           </div>
@@ -428,6 +439,7 @@ export default function Reports() {
           amount={totals.income}
           icon={TrendingUp}
           type="income"
+          currency={currency}
         />
 
         <SummaryCard
@@ -435,6 +447,7 @@ export default function Reports() {
           amount={totals.expense}
           icon={TrendingDown}
           type="expense"
+          currency={currency}
         />
 
         <SummaryCard
@@ -442,6 +455,7 @@ export default function Reports() {
           amount={totals.balance}
           icon={Wallet}
           type="balance"
+          currency={currency}
         />
       </div>
 
@@ -491,6 +505,7 @@ export default function Reports() {
           reportType={reportType}
           data={data}
           invalidDateRange={invalidDateRange}
+          currency={currency}
         />
       </motion.div>
     </div>
@@ -506,6 +521,7 @@ function SummaryCard({
   amount,
   icon: Icon,
   type,
+  currency,
 }) {
   const classes = {
     income:
@@ -531,7 +547,7 @@ function SummaryCard({
       </div>
 
       <p className="mt-3 text-2xl font-bold">
-        {formatCurrency(amount)}
+        {formatCurrency(amount, currency)}
       </p>
     </div>
   );
@@ -545,6 +561,7 @@ function ReportTable({
   reportType,
   data,
   invalidDateRange,
+  currency,
 }) {
   if (invalidDateRange) {
     return (
@@ -601,7 +618,7 @@ function ReportTable({
             </p>
 
             <p className="mt-2 text-xl font-bold text-slate-900">
-              {formatCurrency(item.amount)}
+              {formatCurrency(item.amount, currency)}
             </p>
           </div>
         ))}
@@ -610,7 +627,7 @@ function ReportTable({
   }
 
   /*
-   * Normal table reports
+   * Normal table reports.
    */
   return (
     <div className="overflow-x-auto">
@@ -641,7 +658,10 @@ function ReportTable({
                     className="px-6 py-4 text-sm text-slate-600"
                   >
                     {typeof value === "number"
-                      ? formatCurrency(value)
+                      ? formatCurrency(
+                          value,
+                          currency,
+                        )
                       : value}
                   </td>
                 ),
