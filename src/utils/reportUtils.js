@@ -1,19 +1,45 @@
-import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import * as XLSX from "xlsx";
+
+/* =========================================================
+   FILTER TRANSACTIONS
+========================================================= */
 
 export function getReportTransactions(
   transactions,
-  startDate,
-  endDate,
+  startDate = "",
+  endDate = "",
 ) {
   return transactions.filter((transaction) => {
-    return (
-      transaction.date >= startDate &&
-      transaction.date <= endDate
-    );
+    // Transfers are not income/expense transactions
+    if (transaction.type === "transfer") {
+      return false;
+    }
+
+    const transactionDate = String(
+      transaction.date || "",
+    ).slice(0, 10);
+
+    if (!transactionDate) {
+      return false;
+    }
+
+    if (startDate && transactionDate < startDate) {
+      return false;
+    }
+
+    if (endDate && transactionDate > endDate) {
+      return false;
+    }
+
+    return true;
   });
 }
+
+/* =========================================================
+   TOTALS
+========================================================= */
 
 export function getReportTotals(transactions) {
   const income = transactions
@@ -23,7 +49,7 @@ export function getReportTotals(transactions) {
     )
     .reduce(
       (sum, transaction) =>
-        sum + Number(transaction.amount),
+        sum + Number(transaction.amount || 0),
       0,
     );
 
@@ -34,7 +60,7 @@ export function getReportTotals(transactions) {
     )
     .reduce(
       (sum, transaction) =>
-        sum + Number(transaction.amount),
+        sum + Number(transaction.amount || 0),
       0,
     );
 
@@ -45,280 +71,273 @@ export function getReportTotals(transactions) {
   };
 }
 
+/* =========================================================
+   CATEGORY REPORT
+========================================================= */
+
 export function groupByCategory(transactions) {
-  const result = {};
-
-  transactions
-    .filter(
-      (transaction) =>
-        transaction.type !== "transfer",
-    )
-    .forEach((transaction) => {
-      const category = transaction.category;
-
-      if (!result[category]) {
-        result[category] = {
-          income: 0,
-          expense: 0,
-        };
-      }
-
-      if (transaction.type === "income") {
-        result[category].income += Number(
-          transaction.amount,
-        );
-      }
-
-      if (transaction.type === "expense") {
-        result[category].expense += Number(
-          transaction.amount,
-        );
-      }
-    });
-
-  return Object.entries(result)
-    .map(([category, values]) => ({
-      category,
-      income: values.income,
-      expense: values.expense,
-      total:
-        values.income - values.expense,
-    }))
-    .sort(
-      (a, b) =>
-        Math.abs(b.expense) -
-        Math.abs(a.expense),
-    );
-}
-
-export function groupByAccount(transactions) {
-  const accounts = {
-    Cash: {
-      income: 0,
-      expense: 0,
-      transfersIn: 0,
-      transfersOut: 0,
-    },
-
-    Bank: {
-      income: 0,
-      expense: 0,
-      transfersIn: 0,
-      transfersOut: 0,
-    },
-
-    "Mobile Banking": {
-      income: 0,
-      expense: 0,
-      transfersIn: 0,
-      transfersOut: 0,
-    },
-  };
+  const groups = {};
 
   transactions.forEach((transaction) => {
-    const account = transaction.account;
+    const category =
+      transaction.category || "Other";
 
-    if (!accounts[account]) {
-      return;
+    if (!groups[category]) {
+      groups[category] = {
+        category,
+        income: 0,
+        expense: 0,
+      };
     }
 
-    const amount = Number(transaction.amount);
+    const amount =
+      Number(transaction.amount) || 0;
 
     if (transaction.type === "income") {
-      accounts[account].income += amount;
+      groups[category].income += amount;
     }
 
     if (transaction.type === "expense") {
-      accounts[account].expense += amount;
+      groups[category].expense += amount;
+    }
+  });
+
+  return Object.values(groups);
+}
+
+/* =========================================================
+   ACCOUNT REPORT
+========================================================= */
+
+export function groupByAccount(transactions) {
+  const groups = {};
+
+  transactions.forEach((transaction) => {
+    const account =
+      transaction.account || "Unknown";
+
+    if (!groups[account]) {
+      groups[account] = {
+        account,
+        income: 0,
+        expense: 0,
+        transferIn: 0,
+        transferOut: 0,
+        balance: 0,
+      };
+    }
+
+    const amount =
+      Number(transaction.amount) || 0;
+
+    if (transaction.type === "income") {
+      groups[account].income += amount;
+    }
+
+    if (transaction.type === "expense") {
+      groups[account].expense += amount;
     }
 
     if (
       transaction.type === "transfer" &&
       transaction.transferType === "in"
     ) {
-      accounts[account].transfersIn += amount;
+      groups[account].transferIn += amount;
     }
 
     if (
       transaction.type === "transfer" &&
       transaction.transferType === "out"
     ) {
-      accounts[account].transfersOut += amount;
+      groups[account].transferOut += amount;
     }
   });
 
-  return Object.entries(accounts).map(
-    ([account, values]) => ({
-      account,
-      ...values,
-      net:
-        values.income -
-        values.expense +
-        values.transfersIn -
-        values.transfersOut,
+  return Object.values(groups).map(
+    (item) => ({
+      ...item,
+
+      balance:
+        item.income -
+        item.expense +
+        item.transferIn -
+        item.transferOut,
     }),
   );
 }
 
+/* =========================================================
+   DAILY REPORT
+========================================================= */
+
 export function groupByDate(transactions) {
-  const result = {};
+  const groups = {};
 
-  transactions
-    .filter(
-      (transaction) =>
-        transaction.type !== "transfer",
-    )
-    .forEach((transaction) => {
-      if (!result[transaction.date]) {
-        result[transaction.date] = {
-          income: 0,
-          expense: 0,
-        };
-      }
+  transactions.forEach((transaction) => {
+    const date = String(
+      transaction.date || "",
+    ).slice(0, 10);
 
-      if (transaction.type === "income") {
-        result[transaction.date].income +=
-          Number(transaction.amount);
-      }
+    if (!date) return;
 
-      if (transaction.type === "expense") {
-        result[transaction.date].expense +=
-          Number(transaction.amount);
-      }
-    });
+    if (!groups[date]) {
+      groups[date] = {
+        date,
+        income: 0,
+        expense: 0,
+        balance: 0,
+      };
+    }
 
-  return Object.entries(result)
-    .map(([date, values]) => ({
-      date,
-      income: values.income,
-      expense: values.expense,
-      balance:
-        values.income - values.expense,
-    }))
-    .sort((a, b) =>
+    const amount =
+      Number(transaction.amount) || 0;
+
+    if (transaction.type === "income") {
+      groups[date].income += amount;
+    }
+
+    if (transaction.type === "expense") {
+      groups[date].expense += amount;
+    }
+
+    groups[date].balance =
+      groups[date].income -
+      groups[date].expense;
+  });
+
+  return Object.values(groups).sort(
+    (a, b) =>
       a.date.localeCompare(b.date),
-    );
+  );
 }
+
+/* =========================================================
+   MONTHLY REPORT
+========================================================= */
 
 export function groupByMonth(transactions) {
-  const result = {};
+  const groups = {};
 
-  transactions
-    .filter(
-      (transaction) =>
-        transaction.type !== "transfer",
-    )
-    .forEach((transaction) => {
-      const month =
-        transaction.date.substring(0, 7);
+  transactions.forEach((transaction) => {
+    const month = String(
+      transaction.date || "",
+    ).slice(0, 7);
 
-      if (!result[month]) {
-        result[month] = {
-          income: 0,
-          expense: 0,
-        };
-      }
+    if (!month) return;
 
-      if (transaction.type === "income") {
-        result[month].income +=
-          Number(transaction.amount);
-      }
+    if (!groups[month]) {
+      groups[month] = {
+        month,
+        income: 0,
+        expense: 0,
+        balance: 0,
+      };
+    }
 
-      if (transaction.type === "expense") {
-        result[month].expense +=
-          Number(transaction.amount);
-      }
-    });
+    const amount =
+      Number(transaction.amount) || 0;
 
-  return Object.entries(result)
-    .map(([month, values]) => ({
-      month,
-      income: values.income,
-      expense: values.expense,
-      balance:
-        values.income - values.expense,
-    }))
-    .sort((a, b) =>
+    if (transaction.type === "income") {
+      groups[month].income += amount;
+    }
+
+    if (transaction.type === "expense") {
+      groups[month].expense += amount;
+    }
+
+    groups[month].balance =
+      groups[month].income -
+      groups[month].expense;
+  });
+
+  return Object.values(groups).sort(
+    (a, b) =>
       a.month.localeCompare(b.month),
-    );
+  );
 }
+
+/* =========================================================
+   YEARLY REPORT
+========================================================= */
 
 export function groupByYear(transactions) {
-  const result = {};
+  const groups = {};
 
-  transactions
-    .filter(
-      (transaction) =>
-        transaction.type !== "transfer",
-    )
-    .forEach((transaction) => {
-      const year =
-        transaction.date.substring(0, 4);
+  transactions.forEach((transaction) => {
+    const year = String(
+      transaction.date || "",
+    ).slice(0, 4);
 
-      if (!result[year]) {
-        result[year] = {
-          income: 0,
-          expense: 0,
-        };
-      }
+    if (!year) return;
 
-      if (transaction.type === "income") {
-        result[year].income +=
-          Number(transaction.amount);
-      }
+    if (!groups[year]) {
+      groups[year] = {
+        year,
+        income: 0,
+        expense: 0,
+        balance: 0,
+      };
+    }
 
-      if (transaction.type === "expense") {
-        result[year].expense +=
-          Number(transaction.amount);
-      }
-    });
+    const amount =
+      Number(transaction.amount) || 0;
 
-  return Object.entries(result)
-    .map(([year, values]) => ({
-      year,
-      income: values.income,
-      expense: values.expense,
-      balance:
-        values.income - values.expense,
-    }))
-    .sort((a, b) =>
+    if (transaction.type === "income") {
+      groups[year].income += amount;
+    }
+
+    if (transaction.type === "expense") {
+      groups[year].expense += amount;
+    }
+
+    groups[year].balance =
+      groups[year].income -
+      groups[year].expense;
+  });
+
+  return Object.values(groups).sort(
+    (a, b) =>
       a.year.localeCompare(b.year),
-    );
+  );
 }
+
+/* =========================================================
+   CSV DOWNLOAD
+========================================================= */
 
 export function downloadCSV(
   rows,
   filename,
 ) {
-  if (!rows.length) {
+  if (!rows || !rows.length) {
     return;
   }
 
   const headers = Object.keys(rows[0]);
 
-  const csv = [
+  const csvRows = [
     headers.join(","),
+
     ...rows.map((row) =>
       headers
         .map((header) => {
           const value =
             row[header] ?? "";
 
-          return `"${String(value).replace(
-            /"/g,
+          return `"${String(value).replaceAll(
+            '"',
             '""',
           )}"`;
         })
         .join(","),
     ),
-  ].join("\n");
+  ];
 
-  const blob = new Blob(
-    [csv],
-    {
-      type: "text/csv;charset=utf-8;",
-    },
-  );
+  const csv = csvRows.join("\n");
+
+  const blob = new Blob([csv], {
+    type: "text/csv;charset=utf-8;",
+  });
 
   const url =
     URL.createObjectURL(blob);
@@ -338,31 +357,78 @@ export function downloadCSV(
   URL.revokeObjectURL(url);
 }
 
+/* =========================================================
+   EXCEL DOWNLOAD
+========================================================= */
+
 export function downloadExcel(
   rows,
   filename,
 ) {
-  if (!rows.length) {
+  if (!rows || !rows.length) {
     return;
   }
 
-  const worksheet =
-    XLSX.utils.json_to_sheet(rows);
+  try {
+    // Create worksheet from JSON data
+    const worksheet =
+      XLSX.utils.json_to_sheet(rows);
 
-  const workbook =
-    XLSX.utils.book_new();
+    // Create workbook
+    const workbook =
+      XLSX.utils.book_new();
 
-  XLSX.utils.book_append_sheet(
-    workbook,
-    worksheet,
-    "Report",
-  );
+    // Add worksheet
+    XLSX.utils.book_append_sheet(
+      workbook,
+      worksheet,
+      "Report",
+    );
 
-  XLSX.writeFile(
-    workbook,
-    filename,
-  );
+    // Automatically adjust column widths
+    const headers = Object.keys(rows[0]);
+
+    worksheet["!cols"] = headers.map(
+      (header) => {
+        const maxLength = Math.max(
+          header.length,
+
+          ...rows.map((row) =>
+            String(
+              row[header] ?? "",
+            ).length,
+          ),
+        );
+
+        return {
+          wch: Math.min(
+            Math.max(maxLength + 2, 12),
+            30,
+          ),
+        };
+      },
+    );
+
+    // Download Excel file
+    XLSX.writeFile(
+      workbook,
+      filename,
+    );
+  } catch (error) {
+    console.error(
+      "Excel download failed:",
+      error,
+    );
+
+    alert(
+      "Unable to create the Excel file. Please try again.",
+    );
+  }
 }
+
+/* =========================================================
+   PDF DOWNLOAD
+========================================================= */
 
 export function downloadPDF({
   title,
@@ -371,26 +437,143 @@ export function downloadPDF({
   rows,
   filename,
 }) {
-  const doc = new jsPDF();
+  if (!rows || !rows.length) {
+    return;
+  }
 
-  doc.setFontSize(18);
-  doc.text(title, 14, 18);
+  try {
+    // Create PDF
+    const doc = new jsPDF({
+      orientation:
+        columns.length > 5
+          ? "landscape"
+          : "portrait",
 
-  doc.setFontSize(10);
-  doc.text(subtitle, 14, 26);
+      unit: "mm",
 
-  autoTable(doc, {
-    startY: 34,
-    head: [columns],
-    body: rows,
-    theme: "grid",
-    styles: {
-      fontSize: 9,
-    },
-    headStyles: {
-      fontStyle: "bold",
-    },
-  });
+      format: "a4",
+    });
 
-  doc.save(filename);
+    /* -----------------------------------------------------
+       TITLE
+    ----------------------------------------------------- */
+
+    doc.setFontSize(18);
+
+    doc.setFont("helvetica", "bold");
+
+    doc.text(
+      title || "Cash Management Report",
+      14,
+      18,
+    );
+
+    /* -----------------------------------------------------
+       SUBTITLE
+    ----------------------------------------------------- */
+
+    if (subtitle) {
+      doc.setFontSize(9);
+
+      doc.setFont(
+        "helvetica",
+        "normal",
+      );
+
+      doc.text(
+        subtitle,
+        14,
+        25,
+      );
+    }
+
+    /* -----------------------------------------------------
+       GENERATED DATE
+    ----------------------------------------------------- */
+
+    const generatedDate =
+      new Date().toLocaleDateString(
+        "en-BD",
+      );
+
+    doc.setFontSize(8);
+
+    doc.text(
+      `Generated: ${generatedDate}`,
+      14,
+      31,
+    );
+
+    /* -----------------------------------------------------
+       TABLE
+    ----------------------------------------------------- */
+
+    autoTable(doc, {
+      startY: 38,
+
+      head: [columns],
+
+      body: rows,
+
+      theme: "grid",
+
+      styles: {
+        font: "helvetica",
+        fontSize: 8,
+        cellPadding: 3,
+        overflow: "linebreak",
+      },
+
+      headStyles: {
+        fontStyle: "bold",
+      },
+
+      alternateRowStyles: {
+        fillColor: [248, 250, 252],
+      },
+
+      margin: {
+        top: 38,
+        right: 14,
+        bottom: 20,
+        left: 14,
+      },
+
+      didDrawPage: function (data) {
+        const pageNumber =
+          doc.internal.getNumberOfPages();
+
+        const pageHeight =
+          doc.internal.pageSize.height;
+
+        doc.setFontSize(8);
+
+        doc.setFont(
+          "helvetica",
+          "normal",
+        );
+
+        doc.text(
+          `Page ${pageNumber}`,
+          data.settings.margin.left,
+          pageHeight - 8,
+        );
+      },
+    });
+
+    /* -----------------------------------------------------
+       SAVE PDF
+    ----------------------------------------------------- */
+
+    doc.save(filename);
+  } catch (error) {
+    console.error(
+      "PDF download failed:",
+      error,
+    );
+
+    alert(
+      "Unable to create the PDF file. Please try again.",
+    );
+  }
 }
