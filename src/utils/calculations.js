@@ -1,28 +1,4 @@
-const SETTINGS_KEY = "cash-manager-settings";
-
-export function getCurrency() {
-  try {
-    const saved = localStorage.getItem(SETTINGS_KEY);
-
-    if (saved) {
-      const settings = JSON.parse(saved);
-
-      return settings.currency || "BDT";
-    }
-  } catch (error) {
-    console.error(
-      "Failed to load currency setting:",
-      error,
-    );
-  }
-
-  return "BDT";
-}
-
-export function formatCurrency(
-  amount,
-  currency = getCurrency(),
-) {
+export function formatCurrency(amount, currency = "BDT") {
   return new Intl.NumberFormat("en-BD", {
     style: "currency",
     currency,
@@ -30,9 +6,7 @@ export function formatCurrency(
   }).format(Number(amount) || 0);
 }
 
-export function calculateTotals(
-  transactions,
-) {
+export function calculateTotals(transactions) {
   const income = transactions
     .filter(
       (transaction) =>
@@ -73,50 +47,53 @@ export function calculateAccountBalances(
     "Mobile Banking": 0,
   };
 
-  transactions.forEach(
-    (transaction) => {
-      const account =
-        transaction.account;
+  transactions.forEach((transaction) => {
+    const account =
+      transaction.account;
 
-      if (
-        !Object.prototype.hasOwnProperty.call(
-          balances,
-          account,
-        )
-      ) {
-        return;
-      }
+    // Ignore unknown accounts
+    if (
+      !Object.prototype.hasOwnProperty.call(
+        balances,
+        account,
+      )
+    ) {
+      return;
+    }
 
-      const amount =
-        Number(transaction.amount) || 0;
+    const amount =
+      Number(transaction.amount) || 0;
 
-      if (
-        transaction.type === "income"
-      ) {
-        balances[account] += amount;
-      }
+    // Income increases account balance
+    if (
+      transaction.type === "income"
+    ) {
+      balances[account] += amount;
+    }
 
-      if (
-        transaction.type === "expense"
-      ) {
-        balances[account] -= amount;
-      }
+    // Expense decreases account balance
+    if (
+      transaction.type === "expense"
+    ) {
+      balances[account] -= amount;
+    }
 
-      if (
-        transaction.type === "transfer" &&
-        transaction.transferType === "out"
-      ) {
-        balances[account] -= amount;
-      }
+    // Transfer out decreases source account
+    if (
+      transaction.type === "transfer" &&
+      transaction.transferType === "out"
+    ) {
+      balances[account] -= amount;
+    }
 
-      if (
-        transaction.type === "transfer" &&
-        transaction.transferType === "in"
-      ) {
-        balances[account] += amount;
-      }
-    },
-  );
+    // Transfer in increases destination account
+    if (
+      transaction.type === "transfer" &&
+      transaction.transferType === "in"
+    ) {
+      balances[account] += amount;
+    }
+  });
 
   return balances;
 }
