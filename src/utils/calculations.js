@@ -48,10 +48,8 @@ export function calculateAccountBalances(
   };
 
   transactions.forEach((transaction) => {
-    const account =
-      transaction.account;
+    const account = transaction.account;
 
-    // Ignore unknown accounts
     if (
       !Object.prototype.hasOwnProperty.call(
         balances,
@@ -64,21 +62,14 @@ export function calculateAccountBalances(
     const amount =
       Number(transaction.amount) || 0;
 
-    // Income increases account balance
-    if (
-      transaction.type === "income"
-    ) {
+    if (transaction.type === "income") {
       balances[account] += amount;
     }
 
-    // Expense decreases account balance
-    if (
-      transaction.type === "expense"
-    ) {
+    if (transaction.type === "expense") {
       balances[account] -= amount;
     }
 
-    // Transfer out decreases source account
     if (
       transaction.type === "transfer" &&
       transaction.transferType === "out"
@@ -86,7 +77,6 @@ export function calculateAccountBalances(
       balances[account] -= amount;
     }
 
-    // Transfer in increases destination account
     if (
       transaction.type === "transfer" &&
       transaction.transferType === "in"

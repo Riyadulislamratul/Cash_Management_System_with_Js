@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useRef, useState } from "react";
 
 import {
   AlertTriangle,
@@ -15,76 +15,24 @@ import {
 
 import { motion } from "framer-motion";
 
+import { useSettings } from "../context/SettingsContext";
 import { useCash } from "../context/CashContext";
 
-const SETTINGS_KEY = "cash-manager-settings";
-
-const defaultSettings = {
-  currency: "BDT",
-  dateFormat: "DD/MM/YYYY",
-};
-
 export default function Settings() {
-  const { transactions } = useCash();
+  const {
+    settings,
+    updateSetting,
+    resetSettings,
+  } = useSettings();
 
-  const [settings, setSettings] =
-    useState(defaultSettings);
+  const { transactions } = useCash();
 
   const [showDeleteConfirm, setShowDeleteConfirm] =
     useState(false);
 
   const [message, setMessage] = useState("");
 
-  /*
-   * Load saved settings.
-   */
-  useEffect(() => {
-    try {
-      const saved =
-        localStorage.getItem(SETTINGS_KEY);
-
-      if (saved) {
-        const parsed = JSON.parse(saved);
-
-        setSettings({
-          ...defaultSettings,
-          ...parsed,
-        });
-      }
-    } catch (error) {
-      console.error(
-        "Failed to load settings:",
-        error,
-      );
-    }
-  }, []);
-
-  /*
-   * Save settings whenever they change.
-   */
-  useEffect(() => {
-    localStorage.setItem(
-      SETTINGS_KEY,
-      JSON.stringify(settings),
-    );
-  }, [settings]);
-
-  /*
-   * Update a setting.
-   */
-  const updateSetting = (
-    key,
-    value,
-  ) => {
-    setSettings((current) => ({
-      ...current,
-      [key]: value,
-    }));
-
-    showMessage(
-      "Settings saved successfully.",
-    );
-  };
+  const fileInputRef = useRef(null);
 
   /*
    * Show temporary success message.
@@ -95,6 +43,34 @@ export default function Settings() {
     setTimeout(() => {
       setMessage("");
     }, 2500);
+  };
+
+  /*
+   * Change currency.
+   */
+  const handleCurrencyChange = (event) => {
+    updateSetting(
+      "currency",
+      event.target.value,
+    );
+
+    showMessage(
+      "Currency setting updated successfully.",
+    );
+  };
+
+  /*
+   * Change date format.
+   */
+  const handleDateFormatChange = (event) => {
+    updateSetting(
+      "dateFormat",
+      event.target.value,
+    );
+
+    showMessage(
+      "Date format updated successfully.",
+    );
   };
 
   /*
@@ -158,11 +134,16 @@ export default function Settings() {
   };
 
   /*
+   * Open backup file picker.
+   */
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  /*
    * Import application data.
    */
-  const handleImport = (
-    event,
-  ) => {
+  const handleImport = (event) => {
     const file =
       event.target.files?.[0];
 
@@ -173,9 +154,7 @@ export default function Settings() {
     const reader =
       new FileReader();
 
-    reader.onload = (
-      loadEvent,
-    ) => {
+    reader.onload = (loadEvent) => {
       try {
         const imported =
           JSON.parse(
@@ -193,6 +172,9 @@ export default function Settings() {
           );
         }
 
+        /*
+         * Restore transactions.
+         */
         localStorage.setItem(
           "cash-management-transactions",
           JSON.stringify(
@@ -200,16 +182,31 @@ export default function Settings() {
           ),
         );
 
+        /*
+         * Restore settings through
+         * SettingsContext.
+         */
         if (imported.settings) {
-          localStorage.setItem(
-            SETTINGS_KEY,
-            JSON.stringify(
-              {
-                ...defaultSettings,
-                ...imported.settings,
-              },
-            ),
-          );
+          const importedSettings =
+            imported.settings;
+
+          if (
+            importedSettings.currency
+          ) {
+            updateSetting(
+              "currency",
+              importedSettings.currency,
+            );
+          }
+
+          if (
+            importedSettings.dateFormat
+          ) {
+            updateSetting(
+              "dateFormat",
+              importedSettings.dateFormat,
+            );
+          }
         }
 
         showMessage(
@@ -233,7 +230,9 @@ export default function Settings() {
 
     reader.readAsText(file);
 
-    // Allow importing the same file again.
+    /*
+     * Allow importing the same file again.
+     */
     event.target.value = "";
   };
 
@@ -260,16 +259,7 @@ export default function Settings() {
    * Reset application settings.
    */
   const handleResetSettings = () => {
-    setSettings(
-      defaultSettings,
-    );
-
-    localStorage.setItem(
-      SETTINGS_KEY,
-      JSON.stringify(
-        defaultSettings,
-      ),
-    );
+    resetSettings();
 
     showMessage(
       "Settings restored to default.",
@@ -327,18 +317,14 @@ export default function Settings() {
         description="Customize how Cash Manager displays your information."
       >
         {/* Currency */}
+
         <SettingRow
           title="Currency"
           description="Currency used throughout the application."
         >
           <select
             value={settings.currency}
-            onChange={(event) =>
-              updateSetting(
-                "currency",
-                event.target.value,
-              )
-            }
+            onChange={handleCurrencyChange}
             className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100 sm:w-56"
           >
             <option value="BDT">
@@ -364,18 +350,14 @@ export default function Settings() {
         </SettingRow>
 
         {/* Date Format */}
+
         <SettingRow
           title="Date Format"
           description="Choose how dates should appear."
         >
           <select
             value={settings.dateFormat}
-            onChange={(event) =>
-              updateSetting(
-                "dateFormat",
-                event.target.value,
-              )
-            }
+            onChange={handleDateFormatChange}
             className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100 sm:w-56"
           >
             <option value="DD/MM/YYYY">
@@ -456,6 +438,7 @@ export default function Settings() {
       >
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {/* Export */}
+
           <ActionCard
             icon={Download}
             title="Export Backup"
@@ -465,21 +448,17 @@ export default function Settings() {
           />
 
           {/* Import */}
+
           <ActionCard
             icon={Upload}
             title="Import Backup"
             description="Restore your transactions and settings from a JSON backup."
             buttonText="Import Data"
-            onClick={() =>
-              document
-                .getElementById(
-                  "backup-file-input",
-                )
-                ?.click()
-            }
+            onClick={handleImportClick}
           />
 
           <input
+            ref={fileInputRef}
             id="backup-file-input"
             type="file"
             accept=".json,application/json"
@@ -514,6 +493,7 @@ export default function Settings() {
 
         <div className="space-y-4 p-5">
           {/* Reset settings */}
+
           <div className="flex flex-col justify-between gap-4 rounded-xl border border-slate-100 p-4 sm:flex-row sm:items-center">
             <div>
               <p className="text-sm font-semibold text-slate-800">
@@ -533,11 +513,13 @@ export default function Settings() {
               className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
             >
               <RotateCcw size={15} />
+
               Reset Settings
             </button>
           </div>
 
           {/* Delete data */}
+
           <div className="flex flex-col justify-between gap-4 rounded-xl border border-red-100 bg-red-50/30 p-4 sm:flex-row sm:items-center">
             <div>
               <p className="text-sm font-semibold text-red-800">
@@ -559,6 +541,7 @@ export default function Settings() {
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-red-700"
             >
               <Trash2 size={15} />
+
               Delete All Data
             </button>
           </div>
@@ -728,6 +711,7 @@ function ActionCard({
         className="mt-5 inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-slate-800"
       >
         <Icon size={15} />
+
         {buttonText}
       </button>
     </div>
@@ -783,6 +767,7 @@ function DeleteConfirmation({
             className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700"
           >
             <Trash2 size={16} />
+
             Delete Everything
           </button>
         </div>

@@ -30,6 +30,7 @@ function loadSettings() {
     };
   } catch (error) {
     console.error("Failed to load settings:", error);
+
     return defaultSettings;
   }
 }

@@ -5,7 +5,6 @@ import {
   Banknote,
   Building2,
   CalendarDays,
-  CreditCard,
   Plus,
   Receipt,
   Smartphone,
@@ -18,6 +17,7 @@ import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 
 import { useCash } from "../context/CashContext";
+import { useSettings } from "../context/SettingsContext";
 import { formatCurrency } from "../utils/calculations";
 
 export default function Dashboard() {
@@ -28,6 +28,8 @@ export default function Dashboard() {
     totalCash,
     accountBalances,
   } = useCash();
+
+  const { currency } = useSettings();
 
   /*
    * Show the latest 6 transactions.
@@ -81,6 +83,7 @@ export default function Dashboard() {
         <SummaryCard
           title="Total Cash"
           amount={totalCash}
+          currency={currency}
           icon={Wallet}
           description="Current net balance"
           type="balance"
@@ -89,6 +92,7 @@ export default function Dashboard() {
         <SummaryCard
           title="Total Income"
           amount={totalIncome}
+          currency={currency}
           icon={TrendingUp}
           description="Total money received"
           type="income"
@@ -97,6 +101,7 @@ export default function Dashboard() {
         <SummaryCard
           title="Total Expense"
           amount={totalExpense}
+          currency={currency}
           icon={TrendingDown}
           description="Total money spent"
           type="expense"
@@ -131,6 +136,7 @@ export default function Dashboard() {
           <AccountBalanceCard
             title="Cash"
             balance={accountBalances?.Cash || 0}
+            currency={currency}
             icon={Wallet}
             description="Physical cash"
           />
@@ -138,13 +144,17 @@ export default function Dashboard() {
           <AccountBalanceCard
             title="Bank"
             balance={accountBalances?.Bank || 0}
+            currency={currency}
             icon={Building2}
             description="Bank account"
           />
 
           <AccountBalanceCard
             title="Mobile Banking"
-            balance={accountBalances?.["Mobile Banking"] || 0}
+            balance={
+              accountBalances?.["Mobile Banking"] || 0
+            }
+            currency={currency}
             icon={Smartphone}
             description="Mobile financial services"
           />
@@ -170,6 +180,7 @@ export default function Dashboard() {
         className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
       >
         {/* Section Header */}
+
         <div className="flex items-center justify-between border-b border-slate-100 p-5">
           <div>
             <h2 className="text-lg font-bold text-slate-900">
@@ -190,6 +201,7 @@ export default function Dashboard() {
         </div>
 
         {/* Transactions */}
+
         {recentTransactions.length === 0 ? (
           <EmptyTransactions />
         ) : (
@@ -202,6 +214,7 @@ export default function Dashboard() {
                     `${transaction.date}-${index}`
                   }
                   transaction={transaction}
+                  currency={currency}
                 />
               ),
             )}
@@ -258,18 +271,16 @@ export default function Dashboard() {
 function SummaryCard({
   title,
   amount,
+  currency,
   icon: Icon,
   description,
   type,
 }) {
   const styles = {
     balance: {
-      wrapper:
-        "border-slate-200 bg-white",
-      icon:
-        "bg-slate-100 text-slate-700",
-      amount:
-        "text-slate-900",
+      wrapper: "border-slate-200 bg-white",
+      icon: "bg-slate-100 text-slate-700",
+      amount: "text-slate-900",
     },
 
     income: {
@@ -317,7 +328,7 @@ function SummaryCard({
           <p
             className={`mt-3 text-2xl font-bold ${style.amount}`}
           >
-            {formatCurrency(amount)}
+            {formatCurrency(amount, currency)}
           </p>
 
           <p className="mt-1 text-xs text-slate-400">
@@ -342,6 +353,7 @@ function SummaryCard({
 function AccountBalanceCard({
   title,
   balance,
+  currency,
   icon: Icon,
   description,
 }) {
@@ -376,7 +388,7 @@ function AccountBalanceCard({
       </div>
 
       <p className="mt-5 text-xl font-bold text-slate-900">
-        {formatCurrency(balance)}
+        {formatCurrency(balance, currency)}
       </p>
     </motion.div>
   );
@@ -388,6 +400,7 @@ function AccountBalanceCard({
 
 function TransactionRow({
   transaction,
+  currency,
 }) {
   const isIncome =
     transaction.type === "income";
@@ -439,6 +452,7 @@ function TransactionRow({
   return (
     <div className="flex items-center gap-3 px-5 py-4 transition hover:bg-slate-50">
       {/* Icon */}
+
       <div
         className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${iconWrapper}`}
       >
@@ -446,6 +460,7 @@ function TransactionRow({
       </div>
 
       {/* Details */}
+
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold text-slate-800">
           {transaction.category ||
@@ -481,12 +496,13 @@ function TransactionRow({
       </div>
 
       {/* Amount */}
+
       <div className="shrink-0 text-right">
         <p
           className={`text-sm font-bold ${amountClass}`}
         >
           {amountPrefix}
-          {formatCurrency(amount)}
+          {formatCurrency(amount, currency)}
         </p>
 
         <p className="mt-1 text-[10px] font-medium uppercase tracking-wide text-slate-400">
