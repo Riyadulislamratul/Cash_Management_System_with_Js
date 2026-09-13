@@ -1,13 +1,11 @@
-import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard,
   ArrowLeftRight,
   Wallet,
   BarChart3,
   Settings,
-  WalletCards,
 } from "lucide-react";
-import { FaMoneyBillWave } from "react-icons/fa";
+import { NavLink } from "react-router-dom";
 
 const navigation = [
   {
@@ -37,34 +35,30 @@ const navigation = [
   },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ onNavigate }) {
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-slate-200 bg-white lg:flex">
+    <div className="flex h-full min-h-screen w-64 flex-col bg-white">
       {/* Logo */}
+      <div className="flex h-20 items-center border-b border-slate-200 px-6">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-white">
+            <Wallet size={21} />
+          </div>
 
-      <div className="flex h-20 items-center gap-3 border-b border-slate-100 px-6">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white">
-          <FaMoneyBillWave size={20} />
-        </div>
+          <div className="min-w-0">
+            <h2 className="truncate text-base font-bold text-slate-900">
+              Cash Manager
+            </h2>
 
-        <div>
-          <h1 className="text-base font-bold text-slate-900">
-            Cash Manager
-          </h1>
-
-          <p className="text-[11px] text-slate-400">
-            Management System
-          </p>
+            <p className="truncate text-xs text-slate-500">
+              Personal Finance
+            </p>
+          </div>
         </div>
       </div>
 
       {/* Navigation */}
-
-      <nav className="flex-1 space-y-1 px-4 py-6">
-        <p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-          Menu
-        </p>
-
+      <nav className="flex-1 space-y-1 overflow-y-auto p-4">
         {navigation.map((item) => {
           const Icon = item.icon;
 
@@ -73,42 +67,44 @@ export default function Sidebar() {
               key={item.path}
               to={item.path}
               end={item.path === "/"}
+              onClick={onNavigate}
               className={({ isActive }) =>
-                [
-                  "flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-all",
+                `
+                group flex items-center gap-3 rounded-xl px-4 py-3
+                text-sm font-medium transition-all duration-200
+                ${
                   isActive
                     ? "bg-slate-900 text-white shadow-sm"
-                    : "text-slate-500 hover:bg-slate-100 hover:text-slate-900",
-                ].join(" ")
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                }
+                `
               }
             >
-              <Icon size={19} />
-              <span>{item.name}</span>
+              <Icon
+                size={19}
+                className="shrink-0"
+              />
+
+              <span className="truncate">
+                {item.name}
+              </span>
             </NavLink>
           );
         })}
       </nav>
 
-      {/* Bottom */}
+      {/* Footer */}
+      <div className="border-t border-slate-200 p-4">
+        <div className="rounded-xl bg-slate-50 p-3">
+          <p className="text-xs font-medium text-slate-700">
+            Cash Management System
+          </p>
 
-      <div className="border-t border-slate-100 p-4">
-        <div className="rounded-xl bg-slate-50 p-4">
-          <div className="mb-2 flex items-center gap-2">
-            <WalletCards
-              size={16}
-              className="text-slate-500"
-            />
-
-            <span className="text-xs font-semibold text-slate-700">
-              Cash Management
-            </span>
-          </div>
-
-          <p className="text-[11px] text-slate-400">
-            Keep track of your money.
+          <p className="mt-1 text-[11px] text-slate-500">
+            Manage your money easily
           </p>
         </div>
       </div>
-    </aside>
+    </div>
   );
 }
