@@ -3,6 +3,7 @@ import { Menu, X } from "lucide-react";
 
 import Sidebar from "./Sidebar";
 import Header from "./Header";
+import Footer from "./Footer";
 
 export default function Layout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -51,10 +52,10 @@ export default function Layout({ children }) {
         <Sidebar onNavigate={closeSidebar} />
       </aside>
 
-      {/* Main content */}
-      <div className="min-h-screen lg:ml-64">
-        {/* Mobile navigation bar */}
-        <div className="flex h-16 items-center border-b border-slate-200 bg-white px-4 lg:hidden">
+      {/* Main area */}
+      <div className="flex min-h-screen flex-col lg:ml-64">
+        {/* Mobile top bar */}
+        <div className="flex h-16 shrink-0 items-center border-b border-slate-200 bg-white px-4 lg:hidden">
           <button
             type="button"
             onClick={() => setSidebarOpen(true)}
@@ -79,11 +80,14 @@ export default function Layout({ children }) {
         <Header />
 
         {/* Page content */}
-        <main className="w-full px-3 py-4 sm:px-5 sm:py-6 lg:px-8 lg:py-8">
+        <main className="w-full flex-1 px-3 py-4 sm:px-5 sm:py-6 lg:px-8 lg:py-8">
           <div className="mx-auto w-full max-w-[1600px]">
             {children}
           </div>
         </main>
+
+        {/* Footer */}
+        <Footer />
       </div>
     </div>
   );
