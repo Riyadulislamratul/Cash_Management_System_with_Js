@@ -23,9 +23,17 @@ export default function Footer() {
         </div>
 
         {/* Copyright */}
-        <p className="text-xs text-slate-500">
-          © {currentYear} Cash Manager. All rights reserved.
-        </p>
+        <p className="text-sm text-gray-500">
+              Cash Manager © 2026. All Rights Reserved. Developed by{" "}
+              <a
+                href="https://riyadulislamratul-pearl-omega-kwze47xo7e.vercel.app/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-green-400 hover:text-green-600"
+              >
+                Md Riyadul Islam Ratul
+              </a>
+            </p>
 
         {/* Made with */}
         <div className="flex items-center gap-1.5 text-xs text-slate-500">
